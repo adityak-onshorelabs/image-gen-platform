@@ -147,6 +147,7 @@ export function EditorCanvas({
     <div className="flex justify-center">
       <div
         ref={wrapRef}
+        data-testid="editor-canvas"
         onPointerDown={onPointerDownCanvas}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
