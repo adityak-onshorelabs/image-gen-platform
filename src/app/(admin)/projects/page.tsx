@@ -4,7 +4,7 @@ import { NewProjectButton } from "@/components/NewProjectButton";
 
 export const dynamic = "force-dynamic";
 
-function fmtDate(d: Date) {
+function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
