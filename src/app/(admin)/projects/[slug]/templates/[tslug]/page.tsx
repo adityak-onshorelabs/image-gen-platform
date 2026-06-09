@@ -59,10 +59,7 @@ export default async function TemplatePage({
         </form>
       </div>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-          Base Template
-        </h2>
+      <section className="mb-6">
         <BaseImageUpload
           templateId={template.id}
           projectSlug={slug}

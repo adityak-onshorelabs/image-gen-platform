@@ -34,40 +34,46 @@ export function BaseImageUpload({
   const ratio = `${width} / ${height}`;
 
   return (
-    <div className="space-y-4">
+    <form
+      action={action}
+      className="flex flex-wrap items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-900 p-3"
+    >
+      {/* compact thumbnail */}
       <div
-        className="mx-auto flex max-h-[60vh] items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-[repeating-conic-gradient(#1a1a1a_0_25%,#222_0_50%)] bg-[length:24px_24px]"
-        style={{ aspectRatio: ratio, maxWidth: "100%", width: Math.min(width, 560) }}
+        className="flex h-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-neutral-800 bg-[repeating-conic-gradient(#1a1a1a_0_25%,#222_0_50%)] bg-[length:12px_12px]"
+        style={{ aspectRatio: ratio }}
       >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="Base template" className="h-full w-full object-contain" />
         ) : (
-          <span className="text-sm text-neutral-500">No base image</span>
+          <span className="px-2 text-[10px] text-neutral-500">No base</span>
         )}
       </div>
 
-      <form action={action} className="flex items-center gap-3">
-        <input type="hidden" name="templateId" value={templateId} />
-        <input type="hidden" name="projectSlug" value={projectSlug} />
-        <input type="hidden" name="tslug" value={tslug} />
+      <input type="hidden" name="templateId" value={templateId} />
+      <input type="hidden" name="projectSlug" value={projectSlug} />
+      <input type="hidden" name="tslug" value={tslug} />
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 text-sm text-neutral-300">Base template</div>
         <input
           type="file"
           name="file"
           accept="image/png,image/jpeg,image/webp"
           required
-          className="block w-full text-sm text-neutral-400 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-800 file:px-4 file:py-2 file:text-sm file:text-neutral-200 hover:file:bg-neutral-700"
+          className="block w-full text-sm text-neutral-400 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-800 file:px-3 file:py-1.5 file:text-sm file:text-neutral-200 hover:file:bg-neutral-700"
         />
-        <button type="submit" disabled={pending} className={btnPrimary}>
-          {pending ? "Uploading…" : baseImageUrl ? "Replace" : "Upload"}
-        </button>
-      </form>
+        <p className="mt-1 text-xs text-neutral-600">
+          Normalized to {width}×{height} PNG. PNG / JPEG / WEBP, max 15 MB.
+          {state.error && <span className="ml-2 text-red-400">{state.error}</span>}
+          {state.ok && <span className="ml-2 text-emerald-400">Saved.</span>}
+        </p>
+      </div>
 
-      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state.ok && <p className="text-sm text-emerald-400">Base image saved.</p>}
-      <p className="text-xs text-neutral-600">
-        Figma export, normalized to {width}×{height} PNG. PNG / JPEG / WEBP, max 15 MB.
-      </p>
-    </div>
+      <button type="submit" disabled={pending} className={btnPrimary}>
+        {pending ? "Uploading…" : baseImageUrl ? "Replace" : "Upload"}
+      </button>
+    </form>
   );
 }
