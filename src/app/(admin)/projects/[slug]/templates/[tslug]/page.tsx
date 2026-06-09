@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/lib/data/projects";
 import { getTemplate } from "@/lib/data/templates";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { BaseImageUpload } from "@/components/BaseImageUpload";
 import { deleteTemplateAction } from "@/app/(admin)/projects/actions";
 
 export const dynamic = "force-dynamic";
@@ -50,9 +51,23 @@ export default async function TemplatePage({
         </form>
       </div>
 
-      <div className="rounded-xl border border-dashed border-neutral-800 p-12 text-center text-neutral-500">
-        Template editor — base image upload &amp; visual layer placement land in
-        Milestone 4.
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+          Base Template
+        </h2>
+        <BaseImageUpload
+          templateId={template.id}
+          projectSlug={slug}
+          tslug={tslug}
+          width={template.width}
+          height={template.height}
+          baseImageUrl={template.baseImageUrl}
+          version={template.version}
+        />
+      </section>
+
+      <div className="rounded-xl border border-dashed border-neutral-800 p-8 text-center text-neutral-500">
+        Visual layer placement (text &amp; image layers) lands in Milestone 4.
       </div>
     </div>
   );

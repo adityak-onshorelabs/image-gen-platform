@@ -78,6 +78,17 @@ export async function getTemplate(
   return data ? toTemplate(data as TemplateRow) : null;
 }
 
+export async function getTemplateById(id: string): Promise<Template | null> {
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from("templates")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toTemplate(data as TemplateRow) : null;
+}
+
 async function freeTemplateSlug(
   projectId: string,
   name: string
@@ -130,6 +141,26 @@ export async function updateTemplateMeta(
     .single();
   if (error) throw error;
   return toTemplate(row as TemplateRow);
+}
+
+export async function setBaseImage(
+  id: string,
+  url: string,
+  currentVersion: number
+): Promise<Template> {
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from("templates")
+    .update({
+      base_image_url: url,
+      version: currentVersion + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toTemplate(data as TemplateRow);
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
