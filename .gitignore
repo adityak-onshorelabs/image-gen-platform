@@ -17,3 +17,6 @@ npm-debug.log*
 # spike output
 /scripts/out/*
 !/scripts/out/.gitkeep
+
+# typescript build cache
+tsconfig.tsbuildinfo
