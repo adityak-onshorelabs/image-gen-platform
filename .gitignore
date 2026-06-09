@@ -1,0 +1,19 @@
+node_modules
+.next
+out
+build
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# storage (runtime-generated)
+/storage/generated/*
+/storage/templates/*
+/storage/assets/*
+/storage/fonts/*
+!/storage/**/.gitkeep
+
+# spike output
+/scripts/out/*
+!/scripts/out/.gitkeep
