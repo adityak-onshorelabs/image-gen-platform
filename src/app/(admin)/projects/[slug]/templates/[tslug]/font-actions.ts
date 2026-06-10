@@ -1,10 +1,9 @@
 "use server";
 
-import { join } from "node:path";
 import { getSession } from "@/lib/auth";
 import { listFonts, createFont } from "@/lib/data/fonts";
-import { saveFile, STORAGE_ROOT } from "@/lib/storage";
-import { registerFontFile } from "@/lib/render/fonts";
+import { saveFile } from "@/lib/storage";
+import { registerFontBuffer } from "@/lib/render/fonts";
 import { fetchGoogleFont, GoogleFontError } from "@/lib/fonts/google";
 import { slugify } from "@/lib/slug";
 
@@ -50,7 +49,7 @@ export async function addEditorGoogleFont(
     const filename = `${slugify(fam)}-${w}-${style}.${ext}`;
     const fileUrl = await saveFile("fonts", filename, buffer);
     await createFont({ name: fam, weight: w, style, fileUrl });
-    registerFontFile(join(STORAGE_ROOT, "fonts", filename), fam);
+    registerFontBuffer(buffer, fam, fileUrl);
 
     return { ok: true, font: { name: fam, weight: w, style, fileUrl } };
   } catch (e) {

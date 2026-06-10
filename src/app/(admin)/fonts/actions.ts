@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { join } from "node:path";
 import { createFont, deleteFont, listFonts } from "@/lib/data/fonts";
-import { saveFile, deleteFile, STORAGE_ROOT } from "@/lib/storage";
-import { registerFontFile } from "@/lib/render/fonts";
+import { saveFile, deleteFile } from "@/lib/storage";
+import { registerFontBuffer } from "@/lib/render/fonts";
 import { fetchGoogleFont, GoogleFontError } from "@/lib/fonts/google";
 import { slugify } from "@/lib/slug";
 
@@ -37,7 +36,7 @@ export async function uploadFontAction(
     const buf = Buffer.from(await file.arrayBuffer());
     const url = await saveFile("fonts", filename, buf);
     await createFont({ name, weight, style, fileUrl: url });
-    registerFontFile(join(STORAGE_ROOT, "fonts", filename), name);
+    registerFontBuffer(buf, name, url);
   } catch {
     return { error: "Could not save font." };
   }
@@ -81,7 +80,7 @@ export async function addGoogleFontAction(
       const filename = `${slugify(family)}-${weight}-${style}.${ext}`;
       const url = await saveFile("fonts", filename, buffer);
       await createFont({ name: family, weight, style, fileUrl: url });
-      registerFontFile(join(STORAGE_ROOT, "fonts", filename), family);
+      registerFontBuffer(buffer, family, url);
       added++;
     }
   } catch (e) {

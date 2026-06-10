@@ -1,41 +1,66 @@
 import "server-only";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
+// Object storage on Supabase Storage (works on serverless/Vercel — no local
+// disk). One bucket, four path prefixes mirroring the old local folders.
 export type Bucket = "templates" | "generated" | "assets" | "fonts";
 
-const ROOT = join(process.cwd(), "storage");
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "media";
 
-/** Absolute path for a bucket, ensuring the dir exists. */
-async function bucketDir(bucket: Bucket): Promise<string> {
-  const dir = join(ROOT, bucket);
-  await mkdir(dir, { recursive: true });
-  return dir;
+const CONTENT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  ttf: "font/ttf",
+  otf: "font/otf",
+  woff2: "font/woff2",
+};
+
+function contentTypeFor(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return CONTENT_TYPES[ext] ?? "application/octet-stream";
 }
 
-/** Save bytes; returns the public URL path (served by /api/files). */
+/** Upload bytes to `<prefix>/<filename>`; returns the public URL. */
 export async function saveFile(
-  bucket: Bucket,
+  prefix: Bucket,
   filename: string,
   data: Buffer
 ): Promise<string> {
-  const dir = await bucketDir(bucket);
-  await writeFile(join(dir, filename), data);
-  return `/api/files/${bucket}/${filename}`;
+  const sb = supabaseAdmin();
+  const path = `${prefix}/${filename}`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, data, {
+    upsert: true,
+    contentType: contentTypeFor(filename),
+    cacheControl: "31536000",
+  });
+  if (error) throw error;
+  return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
-export async function deleteFile(bucket: Bucket, filename: string): Promise<void> {
+export async function deleteFile(prefix: Bucket, filename: string): Promise<void> {
+  const sb = supabaseAdmin();
+  await sb.storage.from(BUCKET).remove([`${prefix}/${filename}`]);
+}
+
+/** Hostname of the Supabase Storage origin (so the engine can allowlist it). */
+export function storageHost(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return null;
   try {
-    await unlink(join(ROOT, bucket, filename));
+    return new URL(url).hostname.toLowerCase();
   } catch {
-    // already gone — ignore
+    return null;
   }
 }
 
-/**
- * Resolve a request path (["templates","x.png"]) to an absolute path INSIDE
- * the storage root. Returns null on traversal attempts.
- */
+// --- legacy local-disk helpers (pre-Supabase rows served via /api/files) ----
+// Kept so old `/api/files/...` URLs still resolve in local dev. New writes go to
+// Supabase Storage above. Not used on Vercel (read-only FS).
+const ROOT = join(process.cwd(), "storage");
+
 export function resolveStoragePath(parts: string[]): string | null {
   const rel = normalize(parts.join("/"));
   if (rel.startsWith("..") || rel.includes(`..${sep}`)) return null;

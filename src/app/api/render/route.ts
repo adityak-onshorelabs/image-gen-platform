@@ -4,6 +4,7 @@ import { resolveTarget, renderAndPersist } from "@/lib/render/service";
 import { RenderError } from "@/lib/render/engine";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // Vercel: allow render + asset upload headroom
 
 type RenderBody = {
   project?: string;
@@ -48,11 +49,15 @@ export async function POST(req: Request) {
       cache: body.options?.cache ?? false,
     });
 
+    // imageUrl is an absolute Supabase Storage URL; older local rows are relative
     const base = env.publicBaseUrl().replace(/\/+$/, "");
+    const fullUrl = /^https?:\/\//i.test(out.imageUrl)
+      ? out.imageUrl
+      : `${base}${out.imageUrl}`;
     return Response.json({
       success: true,
       imageUrl: out.imageUrl,
-      fullUrl: `${base}${out.imageUrl}`,
+      fullUrl,
       renderId: out.renderId,
       width: out.width,
       height: out.height,

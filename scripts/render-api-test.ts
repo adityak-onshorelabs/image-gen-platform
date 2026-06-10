@@ -148,7 +148,10 @@ async function render(body: unknown, key = KEY) {
 
   // image actually reachable + non-trivial
   if (ok.json?.imageUrl) {
-    const img = await fetch(`${BASE}${ok.json.imageUrl}`);
+    const abs = /^https?:\/\//.test(ok.json.imageUrl)
+      ? ok.json.imageUrl
+      : `${BASE}${ok.json.imageUrl}`;
+    const img = await fetch(abs);
     const buf = Buffer.from(await img.arrayBuffer());
     check("image reachable", img.status === 200, img.status);
     check("image has bytes", buf.length > 1000, buf.length);

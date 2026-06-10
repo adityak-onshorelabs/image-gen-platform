@@ -8,7 +8,7 @@ import {
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import type { Layer, Align, VAlign, OverflowMode } from "@/lib/layer-types";
-import { resolveStoragePath } from "@/lib/storage";
+import { resolveStoragePath, storageHost } from "@/lib/storage";
 import { registerAllFonts } from "./fonts";
 import { env } from "@/lib/env";
 
@@ -453,8 +453,11 @@ async function resolveImageBuffer(src: string): Promise<Buffer | null> {
     } catch {
       throw new RenderError("INVALID_IMAGE_SOURCE", "Invalid image URL.");
     }
+    // our own Supabase Storage host (base images / assets) is always allowed
+    const ownHost = storageHost();
+    const host = url.hostname.toLowerCase();
     const allow = env.imageAllowlist();
-    if (allow.length > 0 && !allow.includes(url.hostname.toLowerCase())) {
+    if (host !== ownHost && allow.length > 0 && !allow.includes(host)) {
       throw new RenderError(
         "INVALID_IMAGE_SOURCE",
         `Image host not allowed: ${url.hostname}`,
