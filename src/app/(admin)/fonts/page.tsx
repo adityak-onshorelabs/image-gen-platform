@@ -1,4 +1,5 @@
 import { listFonts } from "@/lib/data/fonts";
+import { GoogleFontAdd } from "@/components/GoogleFontAdd";
 import { FontUpload } from "@/components/FontUpload";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { deleteFontAction } from "./actions";
@@ -15,6 +16,10 @@ export default async function FontsPage() {
         <p className="text-sm text-neutral-400">
           Upload the exact fonts used in your Figma designs so rendered text matches.
         </p>
+      </div>
+
+      <div className="mb-6">
+        <GoogleFontAdd />
       </div>
 
       <div className="mb-8">

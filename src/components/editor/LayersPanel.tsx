@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import type { Layer } from "@/lib/layer-types";
 
 export function LayersPanel({
   layers,
   selectedId,
   onSelect,
+  onRename,
   onToggleHidden,
   onDuplicate,
   onDelete,
@@ -14,6 +16,7 @@ export function LayersPanel({
   layers: Layer[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onRename: (id: string, name: string) => void;
   onToggleHidden: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
@@ -21,6 +24,17 @@ export function LayersPanel({
 }) {
   // top of list = top of stack (highest z). Render reversed (array end = top z).
   const ordered = [...layers].reverse();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+
+  function startEdit(l: Layer) {
+    setEditingId(l.id);
+    setDraft(l.name);
+  }
+  function commitEdit() {
+    if (editingId) onRename(editingId, draft);
+    setEditingId(null);
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -46,7 +60,28 @@ export function LayersPanel({
             <span className="text-xs text-neutral-500">
               {l.type === "text" ? "T" : "▦"}
             </span>
-            <span className="flex-1 truncate">{l.name}</span>
+            {editingId === l.id ? (
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  else if (e.key === "Escape") setEditingId(null);
+                }}
+                className="min-w-0 flex-1 rounded border border-sky-500 bg-neutral-900 px-1 py-0.5 text-sm text-white outline-none"
+              />
+            ) : (
+              <span
+                className="flex-1 truncate"
+                title="Double-click to rename"
+                onDoubleClick={(e) => { e.stopPropagation(); startEdit(l); }}
+              >
+                {l.name}
+              </span>
+            )}
             <button
               title="Up"
               onClick={(e) => { e.stopPropagation(); onReorder(l.id, 1); }}

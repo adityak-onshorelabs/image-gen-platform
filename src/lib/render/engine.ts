@@ -7,7 +7,7 @@ import {
 } from "@napi-rs/canvas";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
-import type { Layer } from "@/lib/layer-types";
+import type { Layer, Align, VAlign, OverflowMode } from "@/lib/layer-types";
 import { resolveStoragePath } from "@/lib/storage";
 import { registerAllFonts } from "./fonts";
 import { env } from "@/lib/env";
@@ -134,6 +134,12 @@ function drawTextLayer(
   const autoResize = l.autoResize ?? false;
   const minSize = 12;
 
+  const transform = l.textTransform ?? "none";
+  const style = l.fontStyle === "italic" ? "italic " : "";
+  // case transforms change the string; small-caps is emulated (skia ignores the
+  // small-caps font-variant), so it keeps the string and renders per-char below.
+  text = applyTextTransform(text, transform);
+
   ctx.save();
   ctx.globalAlpha = (l.opacity ?? 100) / 100;
   // letter spacing (skia supports the property)
@@ -143,8 +149,26 @@ function drawTextLayer(
     /* not supported — ignore */
   }
 
+  // CSS font shorthand: [style] [weight] size family
+  const fontAt = (size: number) => `${style}${weight} ${size}px ${family}`;
+
+  if (transform === "small_caps") {
+    ctx.fillStyle = l.fontColor ?? "#000000";
+    drawSmallCaps(ctx, l, text, fontAt, {
+      baseSize,
+      lineHeightMul,
+      align,
+      valign,
+      overflow,
+      autoResize,
+      minSize,
+    });
+    ctx.restore();
+    return;
+  }
+
   const measureAt = (size: number) => {
-    ctx.font = `${weight} ${size}px ${family}`;
+    ctx.font = fontAt(size);
     const lines = wrap(ctx, text, l.width);
     const lineH = size * lineHeightMul;
     return { lines, lineH, totalH: lines.length * lineH };
@@ -177,7 +201,7 @@ function drawTextLayer(
     lines = lines.slice(0, l.maxLines);
   }
 
-  ctx.font = `${weight} ${size}px ${family}`;
+  ctx.font = fontAt(size);
   ctx.fillStyle = l.fontColor ?? "#000000";
   ctx.textBaseline = "top";
   ctx.textAlign = align;
@@ -194,6 +218,132 @@ function drawTextLayer(
   });
   void canvasH;
   ctx.restore();
+}
+
+/**
+ * Emulated small-caps: lowercase letters become uppercase glyphs at a reduced
+ * size; everything else stays full size. Skia ignores the small-caps font
+ * variant, so we lay out and draw per character. Honors wrap, scale_down,
+ * alignment, and vertical align (letter-spacing applies via ctx property).
+ */
+const CAP_SCALE = 0.78;
+function isLowerLetter(ch: string): boolean {
+  return ch.toLowerCase() === ch && ch.toUpperCase() !== ch;
+}
+
+function drawSmallCaps(
+  ctx: SKRSContext2D,
+  l: Layer,
+  text: string,
+  fontAt: (size: number) => string,
+  o: {
+    baseSize: number;
+    lineHeightMul: number;
+    align: Align;
+    valign: VAlign;
+    overflow: OverflowMode;
+    autoResize: boolean;
+    minSize: number;
+  }
+) {
+  const glyph = (ch: string) => (isLowerLetter(ch) ? ch.toUpperCase() : ch);
+  const setFontFor = (ch: string, size: number) =>
+    (ctx.font = fontAt(isLowerLetter(ch) ? size * CAP_SCALE : size));
+
+  const measure = (token: string, size: number) => {
+    let w = 0;
+    for (const ch of token) {
+      setFontFor(ch, size);
+      w += ctx.measureText(glyph(ch)).width;
+    }
+    return w;
+  };
+
+  const wrapSC = (size: number): string[] => {
+    const lines: string[] = [];
+    for (const para of text.split("\n")) {
+      const words = para.split(/\s+/).filter(Boolean);
+      if (words.length === 0) {
+        lines.push("");
+        continue;
+      }
+      let line = words[0];
+      for (let i = 1; i < words.length; i++) {
+        const test = `${line} ${words[i]}`;
+        if (measure(test, size) <= l.width) line = test;
+        else {
+          lines.push(line);
+          line = words[i];
+        }
+      }
+      lines.push(line);
+    }
+    return lines;
+  };
+
+  let size = o.baseSize;
+  let lines = wrapSC(size);
+  if (o.autoResize || o.overflow === "scale_down") {
+    while (size > o.minSize) {
+      const totalH = lines.length * size * o.lineHeightMul;
+      const fitsH = totalH <= l.height;
+      const fitsLines = !l.maxLines || lines.length <= l.maxLines;
+      if (fitsH && fitsLines) break;
+      size -= 2;
+      lines = wrapSC(size);
+    }
+  }
+  if (l.maxLines && lines.length > l.maxLines && o.overflow !== "expand_height") {
+    lines = lines.slice(0, l.maxLines);
+  }
+
+  const lineH = size * o.lineHeightMul;
+  const totalH = lines.length * lineH;
+  let oy = l.y;
+  if (o.valign === "middle") oy = l.y + (l.height - totalH) / 2;
+  else if (o.valign === "bottom") oy = l.y + (l.height - totalH);
+
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left"; // chars are placed manually
+
+  lines.forEach((line, i) => {
+    const lineW = measure(line, size);
+    const startX =
+      o.align === "left"
+        ? l.x
+        : o.align === "right"
+          ? l.x + l.width - lineW
+          : l.x + (l.width - lineW) / 2;
+    const ly = oy + i * lineH + (lineH - size) / 2;
+    let x = startX;
+    for (const ch of line) {
+      const lower = isLowerLetter(ch);
+      const chSize = lower ? size * CAP_SCALE : size;
+      setFontFor(ch, size);
+      const g = glyph(ch);
+      // bottom-align smaller caps to share the baseline with full-size glyphs
+      ctx.fillText(g, x, ly + (size - chSize));
+      x += ctx.measureText(g).width;
+    }
+  });
+}
+
+function applyTextTransform(text: string, transform: string): string {
+  switch (transform) {
+    case "uppercase":
+      return text.toUpperCase();
+    case "lowercase":
+      return text.toLowerCase();
+    case "titlecase":
+      // capitalize first letter of each word; lowercase the rest
+      return text.replace(
+        /\p{L}[\p{L}\p{M}'’]*/gu,
+        (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      );
+    // "small_caps" handled via the font-variant token; "none" → unchanged
+    default:
+      return text;
+  }
 }
 
 function wrap(ctx: SKRSContext2D, text: string, maxWidth: number): string[] {

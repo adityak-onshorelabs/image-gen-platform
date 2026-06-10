@@ -70,7 +70,9 @@ export const layers = pgTable(
     fontFamily: text("font_family"),
     fontSize: integer("font_size"),
     fontWeight: integer("font_weight"),
+    fontStyle: text("font_style"), // normal | italic
     fontColor: text("font_color"),
+    textTransform: text("text_transform"), // none | uppercase | lowercase | titlecase | small_caps
     alignment: text("alignment"), // left | center | right
     verticalAlign: text("vertical_align"), // top | middle | bottom
     lineHeight: numeric("line_height"),

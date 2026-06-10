@@ -231,10 +231,20 @@ function LayerBox({
             color: l.fontColor ?? "#fff",
             fontFamily: l.fontFamily ? `"${l.fontFamily}"` : "sans-serif",
             fontWeight: l.fontWeight ?? 400,
+            fontStyle: l.fontStyle ?? "normal",
+            fontVariant: l.textTransform === "small_caps" ? "small-caps" : "normal",
             fontSize: (l.fontSize ?? 24) * scale,
             lineHeight: l.lineHeight ?? 1.2,
             letterSpacing: (l.letterSpacing ?? 0) * scale,
             textAlign: l.alignment ?? "left",
+            textTransform:
+              l.textTransform === "uppercase"
+                ? "uppercase"
+                : l.textTransform === "lowercase"
+                  ? "lowercase"
+                  : l.textTransform === "titlecase"
+                    ? "capitalize"
+                    : "none",
             display: "flex",
             flexDirection: "column",
             justifyContent:

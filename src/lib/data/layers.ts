@@ -19,7 +19,9 @@ type LayerRow = {
   font_family: string | null;
   font_size: number | null;
   font_weight: number | null;
+  font_style: string | null;
   font_color: string | null;
+  text_transform: string | null;
   alignment: string | null;
   vertical_align: string | null;
   line_height: string | number | null;
@@ -48,7 +50,9 @@ function toLayer(r: LayerRow): Layer {
     fontFamily: r.font_family,
     fontSize: r.font_size,
     fontWeight: r.font_weight,
+    fontStyle: r.font_style as Layer["fontStyle"],
     fontColor: r.font_color,
+    textTransform: r.text_transform as Layer["textTransform"],
     alignment: r.alignment as Layer["alignment"],
     verticalAlign: r.vertical_align as Layer["verticalAlign"],
     lineHeight: r.line_height == null ? null : Number(r.line_height),
@@ -79,7 +83,9 @@ function toRow(templateId: string, l: Layer, zIndex: number) {
     font_family: l.fontFamily,
     font_size: l.fontSize,
     font_weight: l.fontWeight,
+    font_style: l.fontStyle,
     font_color: l.fontColor,
+    text_transform: l.textTransform,
     alignment: l.alignment,
     vertical_align: l.verticalAlign,
     line_height: l.lineHeight,

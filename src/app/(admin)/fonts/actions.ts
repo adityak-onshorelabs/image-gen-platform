@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { join } from "node:path";
-import { createFont, deleteFont } from "@/lib/data/fonts";
+import { createFont, deleteFont, listFonts } from "@/lib/data/fonts";
 import { saveFile, deleteFile, STORAGE_ROOT } from "@/lib/storage";
 import { registerFontFile } from "@/lib/render/fonts";
+import { fetchGoogleFont, GoogleFontError } from "@/lib/fonts/google";
 import { slugify } from "@/lib/slug";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -43,6 +44,58 @@ export async function uploadFontAction(
 
   revalidatePath("/fonts");
   return { ok: true };
+}
+
+export type GoogleFontState = { error?: string; ok?: string };
+
+/** Pull one or more weights of a Google Font into local storage + register. */
+export async function addGoogleFontAction(
+  _prev: GoogleFontState,
+  formData: FormData
+): Promise<GoogleFontState> {
+  const family = String(formData.get("family") ?? "").trim();
+  const italic = String(formData.get("style") ?? "normal") === "italic";
+  const weights = formData
+    .getAll("weights")
+    .map((w) => Number(w))
+    .filter((w) => Number.isFinite(w) && w >= 100 && w <= 900);
+
+  if (!family) return { error: "Font family name required." };
+  if (weights.length === 0) return { error: "Pick at least one weight." };
+
+  const existing = await listFonts();
+  const style = italic ? "italic" : "normal";
+  let added = 0;
+
+  try {
+    for (const weight of weights) {
+      const dup = existing.some(
+        (f) =>
+          f.name.toLowerCase() === family.toLowerCase() &&
+          f.weight === weight &&
+          f.style === style
+      );
+      if (dup) continue;
+
+      const { buffer, ext } = await fetchGoogleFont(family, weight, italic);
+      const filename = `${slugify(family)}-${weight}-${style}.${ext}`;
+      const url = await saveFile("fonts", filename, buffer);
+      await createFont({ name: family, weight, style, fileUrl: url });
+      registerFontFile(join(STORAGE_ROOT, "fonts", filename), family);
+      added++;
+    }
+  } catch (e) {
+    if (e instanceof GoogleFontError) return { error: e.message };
+    return { error: "Could not add Google Font." };
+  }
+
+  revalidatePath("/fonts");
+  return {
+    ok:
+      added === 0
+        ? `${family} ${style} already present for those weights.`
+        : `Added ${family} (${added} weight${added > 1 ? "s" : ""}).`,
+  };
 }
 
 export async function deleteFontAction(formData: FormData) {

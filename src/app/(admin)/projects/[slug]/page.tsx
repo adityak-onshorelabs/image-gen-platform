@@ -4,6 +4,7 @@ import { getProjectBySlug } from "@/lib/data/projects";
 import { listTemplates } from "@/lib/data/templates";
 import { NewTemplateButton } from "@/components/NewTemplateButton";
 import { ProjectSettingsButton } from "@/components/ProjectSettingsButton";
+import { CopyId } from "@/components/CopyId";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ export default async function ProjectPage({
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <p className="text-sm text-neutral-400">{project.description || "—"}</p>
           <p className="mt-1 text-xs text-neutral-600">/{project.slug}</p>
+          <div className="mt-2">
+            <CopyId label="Project ID" id={project.id} full />
+          </div>
         </div>
         <div className="flex gap-2">
           <ProjectSettingsButton
@@ -61,6 +65,9 @@ export default async function ProjectPage({
               </div>
               <div className="mt-3 text-xs text-neutral-600">
                 {t.baseImageUrl ? "Base uploaded" : "No base image"} · v{t.version}
+              </div>
+              <div className="mt-3">
+                <CopyId label="ID" id={t.id} />
               </div>
             </Link>
           ))}

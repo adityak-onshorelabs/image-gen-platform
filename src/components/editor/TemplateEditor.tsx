@@ -6,11 +6,17 @@ import {
   newTextLayer,
   newImageLayer,
   duplicateLayer,
+  normalizeName,
 } from "@/lib/layer-types";
 import { saveLayersAction } from "@/app/(admin)/projects/[slug]/templates/[tslug]/editor-actions";
+import {
+  addEditorGoogleFont,
+  type AddFontResult,
+} from "@/app/(admin)/projects/[slug]/templates/[tslug]/font-actions";
 import { EditorCanvas } from "./EditorCanvas";
 import { LayersPanel } from "./LayersPanel";
 import { LayerInspector } from "./LayerInspector";
+import { PreviewPanel } from "./PreviewPanel";
 
 type Tool = "select" | "text" | "image";
 type FontDef = { name: string; weight: number; style: string; fileUrl: string };
@@ -37,15 +43,37 @@ export function TemplateEditor({
   fonts: FontDef[];
 }) {
   const [layers, setLayers] = useState<Layer[]>(initialLayers);
+  const [fontList, setFontList] = useState<FontDef[]>(fonts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>("select");
   const [dirty, setDirty] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [rightPane, setRightPane] = useState<"inspect" | "preview">("inspect");
   const [pending, startTransition] = useTransition();
 
   const fontFamilies = useMemo(
-    () => [...new Set(fonts.map((f) => f.name))],
-    [fonts]
+    () => [...new Set(fontList.map((f) => f.name))],
+    [fontList]
+  );
+
+  const onAddGoogleFont = useCallback(
+    async (family: string, weight: number, italic: boolean): Promise<AddFontResult> => {
+      const res = await addEditorGoogleFont(family, weight, italic);
+      if (res.ok) {
+        setFontList((prev) =>
+          prev.some(
+            (f) =>
+              f.name === res.font.name &&
+              f.weight === res.font.weight &&
+              f.style === res.font.style
+          )
+            ? prev
+            : [...prev, res.font]
+        );
+      }
+      return res;
+    },
+    []
   );
   const selected = layers.find((l) => l.id === selectedId) ?? null;
 
@@ -76,6 +104,23 @@ export function TemplateEditor({
       setTool("select");
     },
     [mutate, tool, fontFamilies]
+  );
+
+  const onRename = useCallback(
+    (id: string, raw: string) =>
+      mutate((prev) => {
+        const base = normalizeName(raw);
+        const target = prev.find((l) => l.id === id);
+        if (!target || !base) return prev; // empty/invalid → keep current
+        if (base === target.name) return prev;
+        // enforce uniqueness within the template (names are the API keys)
+        const taken = new Set(prev.filter((l) => l.id !== id).map((l) => l.name));
+        let name = base;
+        let i = 2;
+        while (taken.has(name)) name = `${base}_${i++}`;
+        return prev.map((l) => (l.id === id ? { ...l, name } : l));
+      }),
+    [mutate]
   );
 
   const onDuplicate = useCallback(
@@ -146,7 +191,7 @@ export function TemplateEditor({
     });
   }
 
-  const fontFaces = fonts
+  const fontFaces = fontList
     .map(
       (f) =>
         `@font-face{font-family:"${f.name}";font-weight:${f.weight};font-style:${f.style};src:url("${f.fileUrl}");font-display:swap;}`
@@ -168,6 +213,28 @@ export function TemplateEditor({
         <div className="ml-auto flex items-center gap-3">
           {msg && <span className="text-xs text-neutral-400">{msg}</span>}
           {dirty && <span className="text-xs text-amber-400">Unsaved</span>}
+          <div className="flex overflow-hidden rounded-md border border-neutral-700">
+            <button
+              onClick={() => setRightPane("inspect")}
+              className={`px-3 py-1 text-xs transition ${
+                rightPane === "inspect"
+                  ? "bg-neutral-700 text-white"
+                  : "text-neutral-400 hover:bg-neutral-800"
+              }`}
+            >
+              Inspect
+            </button>
+            <button
+              onClick={() => setRightPane("preview")}
+              className={`px-3 py-1 text-xs transition ${
+                rightPane === "preview"
+                  ? "bg-neutral-700 text-white"
+                  : "text-neutral-400 hover:bg-neutral-800"
+              }`}
+            >
+              Preview
+            </button>
+          </div>
           <button
             onClick={save}
             disabled={pending || !dirty}
@@ -185,6 +252,7 @@ export function TemplateEditor({
             layers={layers}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onRename={onRename}
             onToggleHidden={onToggleHidden}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
@@ -206,7 +274,16 @@ export function TemplateEditor({
           />
         </div>
         <div className="border-l border-neutral-800 bg-neutral-950">
-          <LayerInspector layer={selected} fontFamilies={fontFamilies} onChange={onChange} />
+          {rightPane === "inspect" ? (
+            <LayerInspector
+              layer={selected}
+              fontFamilies={fontFamilies}
+              onChange={onChange}
+              onAddGoogleFont={onAddGoogleFont}
+            />
+          ) : (
+            <PreviewPanel templateId={templateId} layers={layers} />
+          )}
         </div>
       </div>
     </div>

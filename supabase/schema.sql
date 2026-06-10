@@ -55,7 +55,9 @@ create table if not exists layers (
   font_family    text,
   font_size      integer,
   font_weight    integer,
+  font_style     text,
   font_color     text,
+  text_transform text,
   alignment      text,
   vertical_align text,
   line_height    numeric,
@@ -91,6 +93,10 @@ create table if not exists fonts (
   file_url   text not null,
   created_at timestamptz not null default now()
 );
+
+-- migrations: idempotent column adds for existing databases
+alter table layers add column if not exists font_style     text;
+alter table layers add column if not exists text_transform text;
 
 -- indexes for common lookups
 create index if not exists templates_project_id_idx on templates(project_id);

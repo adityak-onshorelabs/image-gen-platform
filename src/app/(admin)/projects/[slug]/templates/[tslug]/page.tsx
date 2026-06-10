@@ -5,6 +5,7 @@ import { getTemplate } from "@/lib/data/templates";
 import { listLayers } from "@/lib/data/layers";
 import { listFonts } from "@/lib/data/fonts";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { CopyId } from "@/components/CopyId";
 import { BaseImageUpload } from "@/components/BaseImageUpload";
 import { TemplateEditor } from "@/components/editor/TemplateEditor";
 import { deleteTemplateAction } from "@/app/(admin)/projects/actions";
@@ -46,6 +47,10 @@ export default async function TemplatePage({
           <p className="mt-1 text-xs text-neutral-600">
             API: {project.slug} / {template.slug}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <CopyId label="Template ID" id={template.id} full />
+            <CopyId label="Project ID" id={project.id} />
+          </div>
         </div>
         <form action={deleteTemplateAction}>
           <input type="hidden" name="id" value={template.id} />

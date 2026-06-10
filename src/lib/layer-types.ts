@@ -6,6 +6,13 @@ export type Align = "left" | "center" | "right";
 export type VAlign = "top" | "middle" | "bottom";
 export type OverflowMode = "scale_down" | "truncate" | "expand_height";
 export type FitMode = "cover" | "contain" | "stretch";
+export type FontStyle = "normal" | "italic";
+export type TextTransform =
+  | "none"
+  | "uppercase"
+  | "lowercase"
+  | "titlecase"
+  | "small_caps";
 
 export interface Layer {
   id: string; // uuid (browser-generated for new layers)
@@ -26,7 +33,9 @@ export interface Layer {
   fontFamily: string | null;
   fontSize: number | null;
   fontWeight: number | null;
+  fontStyle: FontStyle | null;
   fontColor: string | null;
+  textTransform: TextTransform | null;
   alignment: Align | null;
   verticalAlign: VAlign | null;
   lineHeight: number | null;
@@ -73,7 +82,9 @@ export function newTextLayer(
     fontFamily,
     fontSize: Math.max(16, Math.round(box.height * 0.6)),
     fontWeight: 600,
+    fontStyle: "normal",
     fontColor: "#ffffff",
+    textTransform: "none",
     alignment: "left",
     verticalAlign: "top",
     lineHeight: 1.2,
@@ -104,7 +115,9 @@ export function newImageLayer(
     fontFamily: null,
     fontSize: null,
     fontWeight: null,
+    fontStyle: null,
     fontColor: null,
+    textTransform: null,
     alignment: null,
     verticalAlign: null,
     lineHeight: null,
